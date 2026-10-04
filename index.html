@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coloreador de Diálogos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+/* Layout: mesa de escritura en dos columnas — manuscrito a la izquierda, código listo a la derecha */
+:root{
+  --bg:#eef0f5; --panel:#ffffff; --ink:#1d2233; --muted:#5d6479; --line:#d5d9e4;
+  --accent:#8a5a12; --accent-soft:#f4ead8; --code-bg:#f6f7fb;
+  --prev-dark:#17192a; --prev-dark-fg:#c9ccd8; --prev-light:#fbf8f1; --prev-light-fg:#2b2b2b;
+  --f-display:"Young Serif", Georgia, serif;
+  --f-body:"Figtree", system-ui, -apple-system, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12141f; --panel:#1b1e2c; --ink:#e7e8ef; --muted:#9aa0b4; --line:#2e3245;
+  --accent:#e8c468; --accent-soft:#2c2817; --code-bg:#151724; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141f; --panel:#1b1e2c; --ink:#e7e8ef; --muted:#9aa0b4; --line:#2e3245;
+  --accent:#e8c468; --accent-soft:#2c2817; --code-bg:#151724; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:22px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;text-wrap:balance}
+h1 .raya{color:var(--accent)}
+.sub{color:var(--muted);margin:6px 0 0;max-width:60ch}
+.legend{font-family:var(--f-mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--muted)}
+.legend b{color:var(--accent);font-weight:500}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:12px}
+textarea{resize:vertical;min-height:230px;line-height:1.6}
+textarea.code{font-family:var(--f-mono);font-size:13px;min-height:200px}
+textarea:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=text]{font-family:var(--f-mono);font-size:13.5px}
+
+.colorrow{display:flex;gap:10px;align-items:center}
+.colorrow input[type=text]{flex:1;min-width:0}
+.swatch{position:relative;width:44px;height:44px;border-radius:8px;border:1px solid var(--line);overflow:hidden;flex:none;cursor:pointer}
+.swatch input{position:absolute;inset:-8px;width:60px;height:60px;border:0;padding:0;cursor:pointer;opacity:0}
+.swatch span{position:absolute;inset:0}
+.recent{display:flex;flex-wrap:wrap;gap:6px;min-height:24px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;padding:3px 8px 3px 4px;border:1px solid var(--line);border-radius:99px;background:var(--code-bg);color:var(--ink);cursor:pointer}
+.chip i{width:14px;height:14px;border-radius:50%;display:block;border:1px solid var(--line)}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+
+.opts{display:flex;flex-wrap:wrap;gap:8px 16px}
+.opts label{display:flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+.opts input{accent-color:var(--accent)}
+
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:600;font-size:13.5px;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:var(--code-bg);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.status{font-size:13px;color:var(--muted)}
+.count{font-family:var(--f-mono);font-size:12px;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:99px;text-transform:none;letter-spacing:0}
+
+.preview{border-radius:8px;padding:16px 18px;line-height:1.7;white-space:pre-wrap;word-wrap:break-word;font-family:Georgia,"Times New Roman",serif;font-size:15px;border:1px solid var(--line);max-height:420px;overflow:auto}
+.preview.dark{background:var(--prev-dark);color:var(--prev-dark-fg)}
+.preview.light{background:var(--prev-light);color:var(--prev-light-fg)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:4px 10px;font-size:12px;font-weight:500;background:transparent;color:var(--muted)}
+.seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--ink)}
+footer{margin-top:24px;color:var(--muted);font-size:13px;max-width:75ch}
+footer code{font-family:var(--f-mono);font-size:12px;background:var(--panel);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Coloreador de Diálogos <span class="raya">—</span></h1>
+      <p class="sub">Pegá tu post, elegí el color del personaje y copiá el BBCode. Detecta rayas, guiones y comillas, y deja afuera los incisos del narrador.</p>
+    </div>
+    <div class="legend"><b>—Diálogo</b> —dijo el narrador—<b>. Más diálogo.</b></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="label"><label for="src">Texto sin código</label><button id="clear" type="button" style="padding:4px 10px;font-size:12px">Borrar</button></div>
+        <textarea id="src" spellcheck="false">—Nombres… —repitió, frunciendo el ceño mientras rebuscaba en lo que le había rozado la cabeza—. Eran fragmentos, Miss Alpha. Dos o tres sílabas sueltas, como si alguien pronunciara un nombre desde muy lejos. Nada que pueda decirte con certeza que sea de un culpable y no de una víctima. —Hizo una mueca de frustración, de las que le salían cuando algo se le escapaba—. Lo anotaré en cuanto pueda, aunque sea incompleto. A veces lo que no se entiende hoy encaja mañana.</textarea>
+      </section>
+
+      <section class="panel">
+        <div class="label"><label for="tag">Código de color</label></div>
+        <div class="colorrow">
+          <label class="swatch" title="Elegir color"><span id="swatchFill"></span><input type="color" id="picker" value="#e8c468" aria-label="Elegir color"></label>
+          <input type="text" id="tag" value="[color=#E8C468] [/color]" spellcheck="false">
+        </div>
+        <p class="hint">Acepta <code>[color=#E8C468] [/color]</code>, solo <code>#E8C468</code>, o etiquetas combinadas como <code>[color=#E8C468][i] [/i][/color]</code>.</p>
+        <div class="recent" id="recent"></div>
+      </section>
+
+      <section class="panel">
+        <div class="label">Qué cuenta como diálogo</div>
+        <div class="opts">
+          <label><input type="checkbox" id="optRaya" checked> Raya (— –)</label>
+          <label><input type="checkbox" id="optGuion" checked> Guion (-)</label>
+          <label><input type="checkbox" id="optComillas" checked> Comillas (" " “ ” « »)</label>
+          <label><input type="checkbox" id="optFix"> Convertir guiones en raya</label>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="label"><label for="out">Resultado con código</label><span class="count" id="count">0 tramos</span></div>
+        <textarea id="out" class="code" readonly spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="primary" id="copy" type="button">Copiar código</button>
+          <span class="status" id="status" role="status"></span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="label">Vista previa
+          <span class="seg" role="group" aria-label="Fondo de la vista previa">
+            <button type="button" id="bgDark" aria-pressed="true">Fondo oscuro</button>
+            <button type="button" id="bgLight" aria-pressed="false">Fondo claro</button>
+          </span>
+        </div>
+        <div class="preview dark" id="preview"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Reglas: una raya al inicio del párrafo (o después de punto o dos puntos) abre diálogo; la siguiente raya abre el inciso del narrador y la que lo cierra devuelve al diálogo, con la puntuación pegada dentro del color. Una raya en medio de narración se toma como aclaración, no como diálogo. Los guiones dentro de palabras (<code>anti-muggle</code>) se ignoran.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const src=$('src'), tag=$('tag'), out=$('out'), preview=$('preview'), picker=$('picker');
+  const store = {
+    get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+    set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+  };
+
+  // ---------- Etiquetas ----------
+  function parseTag(s){
+    s=(s||'').trim();
+    if(!s) return null;
+    if(/^#?[0-9a-f]{3,8}$/i.test(s)){const h=s[0]==='#'?s:'#'+s;return {open:`[color=${h}]`,close:'[/color]',color:h}}
+    if(/^[a-z]+$/i.test(s)) return {open:`[color=${s}]`,close:'[/color]',color:s};
+    const i=s.indexOf('[/');
+    let open,close;
+    if(i>0){open=s.slice(0,i).trim();close=s.slice(i).trim()}
+    else{
+      open=s;
+      const names=[...s.matchAll(/\[([a-z0-9]+)(?:=[^\]]*)?\]/gi)].map(m=>m[1]);
+      close=names.reverse().map(n=>`[/${n}]`).join('');
+    }
+    const m=open.match(/\[color=([^\]]+)\]/i);
+    return {open,close,color:m?m[1].trim():null};
+  }
+
+  // ---------- Detección de diálogo ----------
+  const SPACE=/\s/;
+  const PUNCT_AFTER=/[\s.,;:!?…)"»”'\]]/;
+  function isDash(line,i,o){
+    const c=line[i];
+    if(c==='—'||c==='–') return o.raya;
+    if(c==='-'&&o.guion){
+      if(line[i+1]==='-'||line[i-1]==='-') return false;
+      const prev=i===0?' ':line[i-1], next=i+1>=line.length?' ':line[i+1];
+      return SPACE.test(prev)||PUNCT_AFTER.test(next)||/[(«"“]/.test(prev);
+    }
+    return false;
+  }
+  function opening(line,i){return i===0||/[\s(«"“]/.test(line[i-1])}
+  function afterSentence(line,i){
+    let j=i-1; while(j>=0&&SPACE.test(line[j])) j--;
+    return j<0||/[.!?…:]/.test(line[j]);
+  }
+  const Q_OPEN={'"':'"','“':'”','«':'»'};
+
+  // devuelve array de {t, c} por carácter
+  function markLine(line,o){
+    const res=[]; let st='N', qClose=null;
+    for(let i=0;i<line.length;i++){
+      let ch=line[i];
+      const dash=isDash(line,i,o);
+      if(dash&&o.fix&&ch==='-') ch='—';
+      if(st==='Q'){res.push({t:ch,c:true}); if(ch===qClose) st='N'; continue}
+      if(dash){
+        if(st==='N'){ if(afterSentence(line,i)){st='D';res.push({t:ch,c:true})} else {st='A';res.push({t:ch,c:false})} }
+        else if(st==='A'){st='N';res.push({t:ch,c:false})}
+        else if(st==='D'){st='I';res.push({t:ch,c:false})}
+        else if(st==='I'){st='D';res.push({t:ch,c:opening(line,i)&&afterSentence(line,i)})}
+        continue;
+      }
+      if(st==='N'&&o.comillas&&Q_OPEN[ch]){st='Q';qClose=Q_OPEN[ch];res.push({t:ch,c:true});continue}
+      res.push({t:ch,c:st==='D'});
+    }
+    return res;
+  }
+
+  function colorize(text,tg,o){
+    let n=0;
+    const lines=text.replace(/\r\n?/g,'\n').split('\n').map(line=>{
+      const marks=markLine(line,o);
+      // agrupar en tramos
+      const runs=[];
+      for(const m of marks){const last=runs[runs.length-1]; if(last&&last.c===m.c) last.t+=m.t; else runs.push({t:m.t,c:m.c})}
+      return runs.map(r=>{
+        if(!r.c||!r.t.trim()) return r.t;
+        const lead=r.t.match(/^\s*/)[0], trail=r.t.match(/\s*$/)[0];
+        n++;
+        return lead+tg.open+r.t.trim()+tg.close+trail;
+      }).join('');
+    });
+    return {code:lines.join('\n'),count:n};
+  }
+
+  // ---------- Vista previa BBCode ----------
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  function render(bb){
+    let h=esc(bb);
+    h=h.replace(/\[color=([#a-zA-Z0-9(),.% ]+)\]/gi,'<span style="color:$1">').replace(/\[\/color\]/gi,'</span>');
+    h=h.replace(/\[(\/?)(b|i|u|s)\]/gi,'<$1$2>');
+    return h;
+  }
+
+  // ---------- Estado ----------
+  function opts(){return {raya:$('optRaya').checked,guion:$('optGuion').checked,comillas:$('optComillas').checked,fix:$('optFix').checked}}
+  function toHex(c){const d=document.createElement('canvas').getContext('2d');d.fillStyle='#000';d.fillStyle=c;return d.fillStyle}
+  function update(){
+    const tg=parseTag(tag.value);
+    if(!tg){out.value=src.value;preview.innerHTML=render(src.value);$('count').textContent='sin color';return}
+    const r=colorize(src.value,tg,opts());
+    out.value=r.code;
+    preview.innerHTML=render(r.code);
+    $('count').textContent=r.count+(r.count===1?' tramo':' tramos');
+    const col=tg.color||'transparent';
+    $('swatchFill').style.background=col;
+    if(tg.color){const hx=toHex(tg.color); if(/^#[0-9a-f]{6}$/i.test(hx)) picker.value=hx}
+    store.set('cd_src',src.value); store.set('cd_tag',tag.value); store.set('cd_opts',opts());
+  }
+
+  // colores recientes
+  function recent(){return store.get('cd_recent',[])}
+  function pushRecent(t){const l=recent().filter(x=>x!==t);l.unshift(t);store.set('cd_recent',l.slice(0,8));drawRecent()}
+  function drawRecent(){
+    const box=$('recent'); box.innerHTML='';
+    recent().forEach(t=>{
+      const tg=parseTag(t); if(!tg) return;
+      const b=document.createElement('button'); b.type='button'; b.className='chip'; b.title=t;
+      const i=document.createElement('i'); i.style.background=tg.color||'transparent';
+      b.append(i, document.createTextNode(tg.color||t));
+      b.onclick=()=>{tag.value=t;update()};
+      box.append(b);
+    });
+  }
+
+  $('copy').onclick=()=>{
+    const done=()=>{$('status').textContent='Copiado ✓';setTimeout(()=>$('status').textContent='',2000)};
+    const fallback=()=>{out.focus();out.select();try{document.execCommand('copy');done()}catch(e){$('status').textContent='Seleccionado: usá Ctrl/Cmd+C'}};
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out.value).then(done,fallback); else fallback();
+    if(parseTag(tag.value)) pushRecent(tag.value.trim());
+  };
+  $('clear').onclick=()=>{src.value='';update();src.focus()};
+  picker.addEventListener('input',()=>{
+    const cur=parseTag(tag.value), hex=picker.value.toUpperCase();
+    if(cur&&cur.color&&/\[color=/i.test(tag.value)) tag.value=tag.value.replace(/\[color=[^\]]+\]/i,`[color=${hex}]`);
+    else tag.value=`[color=${hex}] [/color]`;
+    update();
+  });
+  function setBg(d){preview.className='preview '+(d?'dark':'light');$('bgDark').setAttribute('aria-pressed',d);$('bgLight').setAttribute('aria-pressed',!d);store.set('cd_bg',d)}
+  $('bgDark').onclick=()=>setBg(true); $('bgLight').onclick=()=>setBg(false);
+  [src,tag].forEach(el=>el.addEventListener('input',update));
+  ['optRaya','optGuion','optComillas','optFix'].forEach(id=>$(id).addEventListener('change',update));
+
+  // restaurar
+  const s=store.get('cd_src',null); if(s!=null&&s.trim()) src.value=s;
+  const t=store.get('cd_tag',null); if(t) tag.value=t;
+  const o=store.get('cd_opts',null); if(o){$('optRaya').checked=o.raya!==false;$('optGuion').checked=o.guion!==false;$('optComillas').checked=o.comillas!==false;$('optFix').checked=!!o.fix}
+  setBg(store.get('cd_bg',true));
+  drawRecent(); update();
+  window.__colorize=colorize; window.__parseTag=parseTag;
+})();
+</script>
+</body>
+</html>
